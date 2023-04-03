@@ -1,0 +1,52 @@
+[package]
+name = "ht32f1yyy-hal"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jonas Spanoghe <jonas@spanoghe.net>"]
+categories = ["embedded", "hardware-support", "no-std"]
+description = "Hardware Abstraction Layer implementation for HT32F1yyy series microcontrollers"
+keywords = ["arm", "cortex-m", "ht32", "hal", "embedded-hal"]
+license = "MIT"
+repository = "https://gitlab.com/jspngh/ht32f1yyy-hal"
+readme = "README.md"
+exclude = [".gitignore"]
+
+[package.metadata.docs.rs]
+features = ["critical-section-impl", "rt", "ht32f175x"]
+targets = ["thumbv7em-none-eabihf"]
+
+[dependencies]
+embedded-hal = "=1.0.0-alpha.9"
+cortex-m = "0.7"
+ht32f1yyy = { path = "../ht32-rs/ht32f1yyy" }
+nb = "1.0.0"
+fugit = "0.3.6"
+
+[dev-dependencies]
+cortex-m-rt = "0.7"
+critical-section = "1.1.1"
+defmt = "0.3"
+defmt-rtt = "0.4"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+
+[features]
+default = ["critical-section-impl", "rt", "ht32f175x"]
+rt = ["ht32f1yyy/rt"]
+critical-section-impl = ["ht32f1yyy/critical-section", "cortex-m/critical-section-single-core"]
+device-selected = []
+ht32f125x = ["ht32f1yyy/ht32f125x", "device-selected"]
+ht32f1653_54 = ["ht32f1yyy/ht32f1653_54", "device-selected"]
+ht32f1655_56 = ["ht32f1yyy/ht32f1655_56", "device-selected"]
+ht32f175x = ["ht32f1yyy/ht32f175x", "device-selected"]
+
+[profile.dev]
+codegen-units = 1
+debug = true
+opt-level = 2
+incremental = false
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
+opt-level = "s"
