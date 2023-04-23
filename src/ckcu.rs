@@ -1,5 +1,5 @@
 //! Clock Control Unit
-use crate::ht32::{CKCU, FMC, RSTCU};
+use crate::pac::{CKCU, FMC, RSTCU};
 use crate::time::{Hertz, RateExtU32};
 
 /// Extension trait that constrains the `Ckcu` peripheral

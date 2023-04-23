@@ -105,7 +105,7 @@ macro_rules! gpio {
             use core::marker::PhantomData;
 
             use crate::hal::digital::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin, ErrorType};
-            use crate::ht32::{$GPIOX, RSTCU, AFIO, CKCU};
+            use crate::pac::{$GPIOX, RSTCU, AFIO, CKCU};
 
             use super::{
                 Output, Input, OpenDrain, PushPull, PullDown, PullUp, Floating,

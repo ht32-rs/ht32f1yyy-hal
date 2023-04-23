@@ -30,14 +30,23 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 
 [features]
-default = ["critical-section-impl", "rt", "ht32f175x"]
+# TODO: remove these default features
+default = ["rt", "critical-section-impl", "ht32f1755"]
 rt = ["ht32f1yyy/rt"]
 critical-section-impl = ["ht32f1yyy/critical-section", "cortex-m/critical-section-single-core"]
+
 device-selected = []
-ht32f125x = ["ht32f1yyy/ht32f125x", "device-selected"]
-ht32f1653_54 = ["ht32f1yyy/ht32f1653_54", "device-selected"]
-ht32f1655_56 = ["ht32f1yyy/ht32f1655_56", "device-selected"]
-ht32f175x = ["ht32f1yyy/ht32f175x", "device-selected"]
+ht32f1251 = ["ht32f1yyy/ht32f125x", "device-selected"]
+ht32f1252 = ["ht32f1yyy/ht32f125x", "device-selected"]
+ht32f1253 = ["ht32f1yyy/ht32f125x", "device-selected"]
+ht32f1653 = ["ht32f1yyy/ht32f1653_54", "device-selected"]
+ht32f1654 = ["ht32f1yyy/ht32f1653_54", "device-selected"]
+ht32f1655 = ["ht32f1yyy/ht32f1655_56", "device-selected"]
+ht32f1656 = ["ht32f1yyy/ht32f1655_56", "device-selected"]
+ht32f1755 = ["ht32f1yyy/ht32f175x", "device-selected"]
+ht32f1765 = ["ht32f1yyy/ht32f175x", "device-selected"]
+# TODO: should we add this, even though it is a "HT32F2" device?
+# ht32f2755 = ["ht32f1yyy/ht32f175x", "device-selected"]
 
 [profile.dev]
 codegen-units = 1
