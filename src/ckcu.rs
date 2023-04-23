@@ -119,7 +119,7 @@ impl Configuration {
         self
     }
 
-    /// Notifies the Configuration mechanism that an LSI is in use, this
+    /// Notifies the Configuration mechanism that an LSE is in use, this
     /// will make it prefer the LSE over the LSI in case the LSI should
     /// turn out to be the fitting clock for a certain part of the
     /// configuration.
@@ -171,82 +171,71 @@ impl Configuration {
     pub fn freeze(self) -> Clocks {
         // High speed oscillator
         let hso = self.hse.unwrap_or_else(|| HSI.Hz());
-        // PLL source clock, see top left corner of the clock tree,
-        // User manual page 83
-        let pllsrc = self.hse.is_some();
+        // PLL source clock, see top left corner of the clock tree
+        let pllsrc = self.hse.is_none();
 
         let mut pll_target_clock = None;
 
-        // Refer to User manual page 96 for SW values
+        // Refer to User manual for SW values
         let (sw, mut ck_sys) = match self.ck_sys {
             Some(ck_sys) => {
-                // Maximum frequency for CK_SYS is 48 Mhz
-                // Refer to User Manual page 83 at the CK_SYS mux
-                assert!(ck_sys <= 48.MHz::<1, 1>());
+                // Maximum frequency for CK_SYS is 144 Mhz
+                // Refer to CKCU Block Diagram in User Manual
+                assert!(ck_sys <= 144.MHz::<1, 1>());
 
-                if self.lse.map(|l| l == ck_sys).unwrap_or(false) {
-                    (0b110, self.lse.unwrap())
-                } else if self.hse.map(|h| h == ck_sys).unwrap_or(false) {
-                    (0b010, self.hse.unwrap())
-                } else if ck_sys.raw() == LSI {
-                    (0b111, LSI.Hz())
+                if self.hse.map(|h| h == ck_sys).unwrap_or(false) {
+                    (0b10, self.hse.unwrap())
                 } else if ck_sys.raw() == HSI {
-                    (0b011, HSI.Hz())
+                    (0b11, HSI.Hz())
                 }
                 // If no exact match is found, use the pll
                 else {
                     pll_target_clock = Some(ck_sys);
-                    (0b000, ck_sys)
+                    (0b00, ck_sys)
                 }
             }
-            // If no value is given select the low speed oscillator,
-            // furthermore automatically choose LSE if it's provided.
-            None => match self.lse {
-                Some(lse) => (0b110, lse),
-                None => (0b111, LSI.Hz()),
+            // If no value is given select the high speed oscillator,
+            // furthermore automatically choose HSE if it's provided.
+            None => match self.hse {
+                Some(hse) => (0b10, hse),
+                None => (0b11, HSI.Hz()),
             },
         };
 
-        let mut ck_usb = match self.ck_usb {
+        match self.ck_usb {
             Some(ck_usb) => {
                 // Maximum frequency for CK_USB is 48 Mhz
-                // Refer to User Manual page 83, top right corner
+                // Refer to CKCU Block Diagram in User Manual
                 assert!(ck_usb < 48.MHz::<1, 1>());
                 if pll_target_clock.is_none() {
                     pll_target_clock = self.ck_usb;
                 }
                 ck_usb
             }
-            None => match pll_target_clock {
-                Some(clock) => clock,
-                None => 0.Hz(),
-            },
+            None => 0.Hz(),
         };
 
         let (mut nf2, mut no2) = (None, None);
         if let Some(pll_target) = pll_target_clock {
-            // According to User Manual page 87
-            // pll_out = CK_in (NF2/NO2)
+            // According to User Manual: pll_out = CK_in (NF2/NO2)
             let optimal_divider = pll_target.raw() as f32 / hso.raw() as f32;
             let mut closest = (1, 1);
             let mut difference = f32::MAX;
 
             // Try all combinations of NF2 and NO2, there are only
-            // 64 so this should be fine.
-            for nf2 in 1..17 {
-                // According to User Manual page 87
-                // VCO_out = CK_in * (NF1*NF2)/2 = CK_in * (4*NF2)/2
-                // and VCO_out must be between 48 and 96 Mhz
-                let vco_out = hso.raw() * (4 * nf2) / 2;
-                if vco_out >= 48_000_000 && vco_out <= 96_000_000 {
+            // 256 so this should be fine.
+            for nf2 in 1..=64 {
+                // VCO_out = CK_in * NF2
+                // and VCO_out must be between 64 and 144 Mhz
+                let vco_out = hso.raw() * nf2;
+                if vco_out >= 64_000_000 && vco_out <= 144_000_000 {
                     for no2 in &[1, 2, 4, 8] {
                         let current_divider = nf2 as f32 / *no2 as f32;
 
-                        // According to User Manual page 87
                         // The maximum output frequency for the PLL must be
-                        // bettween 4 and 48 Mhz
+                        // between 8 and 72 Mhz
                         let current_output = current_divider * hso.raw() as f32;
-                        if !(current_output > 4_000_000.0 && current_output < 48_000_000.0) {
+                        if !(current_output >= 8_000_000.0 && current_output <= 72_000_000.0) {
                             continue;
                         }
 
@@ -263,12 +252,13 @@ impl Configuration {
                 }
             }
 
-            ck_sys = ((hso.raw() as f32 * (closest.0 as f32 / closest.1 as f32)) as u32).Hz();
-            ck_usb = ck_sys;
+            let ck_pll = ((hso.raw() as f32 * (closest.0 as f32 / closest.1 as f32)) as u32).Hz();
+            if sw == 0b00 {
+                ck_sys = ck_pll;
+            }
 
             // Map NF2 values to their respective register values
-            // Refer to User manual page 88
-            closest.0 = if closest.0 == 16 { 0 } else { closest.0 };
+            closest.0 = if closest.0 == 64 { 0 } else { closest.0 };
 
             // Map NO2 values to their respective register values
             // Refer to User manual page 88
@@ -286,16 +276,14 @@ impl Configuration {
 
         // Calculate the AHB clock prescaler
         // hclk = ck_sys / ahb prescaler
-        // for the prescaler values refer to User Manual page 100
         let (ahb_div, hclk) = match self.hclk {
             Some(hclk) => {
                 let (bits, div) = match ck_sys.raw() / hclk.raw() {
                     0 => unreachable!(),
-                    1 => (0b000, 1),
-                    2..=3 => (0b001, 2),
-                    4..=7 => (0b010, 4),
-                    8..=15 => (0b100, 8),
-                    _ => (0b111, 16),
+                    1 => (0b00, 1),
+                    2..=3 => (0b01, 2),
+                    4..=7 => (0b10, 4),
+                    _ => (0b11, 8),
                 };
 
                 (bits, (ck_sys.raw() / div).Hz())
@@ -303,19 +291,33 @@ impl Configuration {
             None => (0b000, ck_sys),
         };
 
+        let (usb_div, ck_usb) = match self.ck_usb {
+            Some(usbclk) => {
+                // TODO: this should be ck_pll, since there is no guarantuee ck_sys == ck_pll
+                let (bits, div) = match ck_sys.raw() / usbclk.raw() {
+                    0 => unreachable!(),
+                    1 => (0b00, 1),
+                    2 => (0b01, 2),
+                    _ => (0b10, 3),
+                };
+                (bits, (ck_sys.raw() / div).Hz())
+            }
+            None => (0b10, 0.Hz()),
+        };
+
+        // SysTick clock
         let stclk = (hclk.raw() / 8).Hz();
 
         // Calculate the ADC clock prescaler
         // ck_adc_ip = hclk / adc prescaler
-        // for the prescaler values refer to User Manual page 103
         let (adc_div, ck_adc_ip) = match self.ck_adc_ip {
             Some(ck_adc_ip) => {
                 let (bits, div) = match hclk.raw() / ck_adc_ip.raw() {
                     0 => unreachable!(),
                     1 => (0b000, 1),
-                    2 => (0b001, 2),
-                    3 => (0b111, 3),
-                    4..=7 => (0b010, 4),
+                    2..=3 => (0b001, 2),
+                    4..=5 => (0b010, 4),
+                    6..=7 => (0b111, 6),
                     8..=15 => (0b011, 8),
                     16..=31 => (0b100, 16),
                     32..=63 => (0b101, 32),
@@ -337,25 +339,26 @@ impl Configuration {
 
             // Set the actual configuration values
             ckcu.ckcu_pllcfgr.modify(|_, w| unsafe {
-                w.pfbd() // PFBD contains NF2, refer to User Manual page 88
-                    .bits(nf2.unwrap())
-                    .potd() // POTD contains NO2, refer to User Manual page 88
-                    .bits(no2.unwrap())
+                w.pfbd() // PFBD contains NF2
+                 .bits(nf2.unwrap())
+                 .potd() // POTD contains NO2
+                 .bits(no2.unwrap())
             });
 
-            // Enable the PLL, described at User Manual page 87
+            // Enable the PLL
             ckcu.ckcu_gccr.modify(|_, w| w.pllen().set_bit());
 
-            // Wait for the PLL to become stable, described at User Manual page 87
+            // Wait for the PLL to become stable
             while !ckcu.ckcu_gcsr.read().pllrdy().bit_is_set() {
                 cortex_m::asm::nop();
             }
         }
 
         // Set the flash wait states so the chip doesn't hang on higher frequencies
-        // See User Manual page 66 for the values
         let fmc = unsafe { &*FMC::ptr() };
-        if hclk > 24.MHz::<1, 1>() {
+        if hclk > 48.MHz::<1, 1>() {
+            fmc.fmc_cfcr.modify(|_, w| unsafe { w.wait().bits(0b011) });
+        } else if hclk > 24.MHz::<1, 1>() {
             fmc.fmc_cfcr.modify(|_, w| unsafe { w.wait().bits(0b010) });
         }
 
@@ -363,14 +366,19 @@ impl Configuration {
         ckcu.ckcu_gccr.modify(|_, w| unsafe { w.sw().bits(sw) });
 
         // Set the AHB prescaler
-        ckcu.ckcu_ahbcfgr.modify(|_, w| unsafe { w.ahbpre().bits(ahb_div) });
+        ckcu.ckcu_ahbcfgr
+            .modify(|_, w| unsafe { w.ahbpre().bits(ahb_div) });
+
+        // Set the USB prescaler
+        ckcu.ckcu_gcfgr
+            .modify(|_, w| unsafe { w.usbpre().bits(usb_div) });
 
         // Set the ADC prescaler
-        ckcu.ckcu_apbcfgr.modify(|_, w| unsafe { w.adcdiv().bits(adc_div) });
+        ckcu.ckcu_apbcfgr
+            .modify(|_, w| unsafe { w.adcdiv().bits(adc_div) });
 
         // After all clocks are set up, configure CKOUT if required
         if let Some(ckout) = self.ckout {
-            // Refer to User Manual page 94 for these values
             let ckout = match ckout {
                 CkoutSrc::CkRef => 0b000,
                 CkoutSrc::Hclk => 0b001,
@@ -381,7 +389,8 @@ impl Configuration {
                 CkoutSrc::CkLsi => 0b110,
             };
 
-            ckcu.ckcu_gcfgr.modify(|_, w| unsafe { w.ckoutsrc().bits(ckout) });
+            ckcu.ckcu_gcfgr
+                .modify(|_, w| unsafe { w.ckoutsrc().bits(ckout) });
         }
 
         // Reset AFIO here because the GPIO implementation is block wise ->
