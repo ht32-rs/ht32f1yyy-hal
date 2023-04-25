@@ -1,4 +1,4 @@
-//! Clock Control Unit
+//! Clock Control Unit + Reset Control Unit
 use crate::pac::{CKCU, FMC, RSTCU};
 use crate::time::{Hertz, RateExtU32};
 
@@ -206,7 +206,7 @@ impl Configuration {
             Some(ck_usb) => {
                 // Maximum frequency for CK_USB is 48 Mhz
                 // Refer to CKCU Block Diagram in User Manual
-                assert!(ck_usb < 48.MHz::<1, 1>());
+                assert!(ck_usb <= 48.MHz::<1, 1>());
                 if pll_target_clock.is_none() {
                     pll_target_clock = self.ck_usb;
                 }
@@ -228,14 +228,14 @@ impl Configuration {
                 // VCO_out = CK_in * NF2
                 // and VCO_out must be between 64 and 144 Mhz
                 let vco_out = hso.raw() * nf2;
-                if vco_out >= 64_000_000 && vco_out <= 144_000_000 {
+                if (64_000_000..=144_000_000).contains(&vco_out) {
                     for no2 in &[1, 2, 4, 8] {
                         let current_divider = nf2 as f32 / *no2 as f32;
 
                         // The maximum output frequency for the PLL must be
                         // between 8 and 72 Mhz
                         let current_output = current_divider * hso.raw() as f32;
-                        if !(current_output >= 8_000_000.0 && current_output <= 72_000_000.0) {
+                        if !(8_000_000.0..=72_000_000.0).contains(&current_output) {
                             continue;
                         }
 
@@ -410,3 +410,126 @@ impl Configuration {
         }
     }
 }
+
+/// Peripheral Clock Enable and Reset
+pub(crate) trait Pcer {
+    fn enable(&self);
+    fn disable(&self);
+    fn reset(&self);
+}
+
+macro_rules! pcer {
+    (
+        $(($PERI:ident, $bccr:ident, $bccb:ident, $brstr:ident, $brstb:ident),)+
+    ) => {
+        $(
+            impl Pcer for crate::pac::$PERI {
+                fn enable(&self) {
+                    let ckcu = unsafe { &*CKCU::ptr() };
+                    ckcu.$bccr.modify(|_, w| w.$bccb().set_bit());
+                }
+
+                fn disable(&self) {
+                    let ckcu = unsafe { &*CKCU::ptr() };
+                    ckcu.$bccr.modify(|_, w| w.$bccb().clear_bit());
+                }
+
+                fn reset(&self) {
+                    let rstcu = unsafe { &*RSTCU::ptr() };
+                    rstcu.$brstr.modify(|_, w| w.$brstb().set_bit());
+                }
+            }
+        )+
+    }
+}
+
+// COMMON
+pcer!(
+    (I2C0,  ckcu_apbccr0, i2c0en,  rstcu_apbprstr0, i2c0rst),
+    (I2C1,  ckcu_apbccr0, i2c1en,  rstcu_apbprstr0, i2c1rst),
+    (SPI0,  ckcu_apbccr0, spi0en,  rstcu_apbprstr0, spi0rst),
+    (SPI1,  ckcu_apbccr0, spi1en,  rstcu_apbprstr0, spi1rst),
+    (AFIO,  ckcu_apbccr0, afioen,  rstcu_apbprstr0, afiorst),
+    (EXTI,  ckcu_apbccr0, extien,  rstcu_apbprstr0, extirst),
+    (SCI,   ckcu_apbccr0, scien,   rstcu_apbprstr0, scirst),
+    (GPTM0, ckcu_apbccr1, gptm0en, rstcu_apbprstr1, gptm0rst),
+    (GPTM1, ckcu_apbccr1, gptm1en, rstcu_apbprstr1, gptm1rst),
+    (BFTM0, ckcu_apbccr1, bftm0en, rstcu_apbprstr1, bftm0rst),
+    (BFTM1, ckcu_apbccr1, bftm1en, rstcu_apbprstr1, bftm1rst),
+    (ADC,   ckcu_apbccr1, adcen,   rstcu_apbprstr1, adcrst),
+);
+
+// UART
+#[cfg(any(feature = "ht32f1755", feature = "ht32f1765"))]
+pcer!(
+    (USART0, ckcu_apbccr0, ur0en, rstcu_apbprstr0, ur0rst),
+    (USART1, ckcu_apbccr0, ur1en, rstcu_apbprstr0, ur1rst),
+);
+
+#[cfg(any(
+    feature = "ht32f1653",
+    feature = "ht32f1654",
+    feature = "ht32f1655",
+    feature = "ht32f1656",
+))]
+pcer!(
+    (UART0,  ckcu_apbccr0, ur0en,  rstcu_apbprstr0, ur0rst),
+    (UART1,  ckcu_apbccr0, ur1en,  rstcu_apbprstr0, ur1rst),
+    (USART0, ckcu_apbccr0, usr0en, rstcu_apbprstr0, usr0rst),
+    (USART1, ckcu_apbccr0, usr1en, rstcu_apbprstr0, usr1rst),
+);
+
+// GPIO
+#[cfg(any(feature = "ht32f1755", feature = "ht32f1765"))]
+pcer!(
+    (GPIOA, ckcu_apbccr0, paen, rstcu_apbprstr0, parst),
+    (GPIOB, ckcu_apbccr0, pben, rstcu_apbprstr0, pbrst),
+    (GPIOC, ckcu_apbccr0, pcen, rstcu_apbprstr0, pcrst),
+    (GPIOD, ckcu_apbccr0, pden, rstcu_apbprstr0, pdrst),
+    (GPIOE, ckcu_apbccr0, peen, rstcu_apbprstr0, perst),
+);
+
+#[cfg(any(
+    feature = "ht32f1653",
+    feature = "ht32f1654",
+    feature = "ht32f1655",
+    feature = "ht32f1656",
+))]
+pcer!(
+    (GPIOA, ckcu_ahbccr, paen, rstcu_ahbprstr, parst),
+    (GPIOB, ckcu_ahbccr, pben, rstcu_ahbprstr, pbrst),
+    (GPIOC, ckcu_ahbccr, pcen, rstcu_ahbprstr, pcrst),
+    (GPIOD, ckcu_ahbccr, pden, rstcu_ahbprstr, pdrst),
+);
+
+#[cfg(any(feature = "ht32f1655", feature = "ht32f1656"))]
+pcer!(
+    (GPIOE, ckcu_ahbccr, peen, rstcu_ahbprstr, perst),
+);
+
+// USB
+#[cfg(any(feature = "ht32f1755", feature = "ht32f1765"))]
+pcer!(
+    (USB, ckcu_apbccr1, usben, rstcu_apbprstr1, usbrst),
+);
+
+#[cfg(any(
+    feature = "ht32f1653",
+    feature = "ht32f1654",
+    feature = "ht32f1655",
+    feature = "ht32f1656",
+))]
+pcer!(
+    (USB, ckcu_ahbccr, usben, rstcu_ahbprstr, usbrst),
+);
+
+// CRC
+#[cfg(any(
+    feature = "ht32f1653",
+    feature = "ht32f1654",
+    feature = "ht32f1655",
+    feature = "ht32f1656",
+))]
+pcer!(
+    (CRC, ckcu_ahbccr, crcen, rstcu_ahbprstr, crcrst),
+);
