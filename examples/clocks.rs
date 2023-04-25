@@ -13,6 +13,7 @@ use hal::time::RateExtU32;
 #[cortex_m_rt::entry]
 fn main() -> ! {
     defmt::info!("Example: CKCU");
+    let cp = cortex_m::Peripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
     let ckcu = dp.CKCU.constrain(dp.RSTCU);
 
@@ -24,5 +25,17 @@ fn main() -> ! {
         .freeze();
 
     defmt::info!("Example: CKCU, done");
-    loop {}
+
+    let mut syst = cp.SYST;
+    // SysTick happens every 8 core clock cycles
+    // reload value = 72 MHz / 8 -> 1 Hz wrap
+    syst.set_reload(9_000_000);
+    syst.clear_current();
+    syst.enable_counter();
+
+    loop {
+        if syst.has_wrapped() {
+            defmt::info!("Tick");
+        }
+    }
 }
