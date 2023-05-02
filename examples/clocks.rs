@@ -17,7 +17,7 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
     let ckcu = dp.CKCU.constrain(dp.RSTCU);
 
-    ckcu.configuration
+    let _clocks = ckcu.configuration
         .use_hse(8.MHz())
         .ck_sys(144u32.MHz())
         .hclk(72u32.MHz())

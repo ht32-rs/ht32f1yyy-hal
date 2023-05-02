@@ -17,24 +17,38 @@ use embedded_hal::digital::{InputPin, OutputPin};
 #[cortex_m_rt::entry]
 fn main() -> ! {
     defmt::info!("Example: GPIO");
+    let cp = cortex_m::Peripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
     let ckcu = dp.CKCU.constrain(dp.RSTCU);
     let mut afio = Afio::new(dp.AFIO);
 
-    ckcu.configuration
+    let _clocks = ckcu.configuration
         .use_hse(8.MHz())
         .ck_sys(144u32.MHz())
         .hclk(72u32.MHz())
         .ck_usb(48u32.MHz())
         .freeze();
 
-    let gpioa = dp.GPIOA.split();
-    let mut led0 = gpioa.pa0.into_output_push_pull();
-    let input0 = gpioa.pa1.into_input_pull_down();
-    let _test_af = gpioa.pa2.into_alternate_af2(&mut afio);
-    led0.set_high().unwrap();
+    let gpiob = dp.GPIOB.split();
+    let gpioc = dp.GPIOC.split();
+    let gpioe = dp.GPIOE.split();
+
+    // To access PB6 as GPIO, we have to enable AF1 on the pin
+    let mut output = gpiob.pb6.into_alternate_af1(&mut afio).into_output_push_pull();
+    let input = gpioc.pc11.into_input_pull_down();
+    let _scl = gpioe.pe9.into_alternate_af3(&mut afio);
+    let _sda = gpioe.pe10.into_alternate_af3(&mut afio);
+
+    output.set_high().unwrap();
+
+    let mut syst = cp.SYST;
+    syst.set_reload(9_000_000);
+    syst.clear_current();
+    syst.enable_counter();
 
     loop {
-        defmt::info!("input0, reading: {}", input0.is_high().unwrap());
+        if syst.has_wrapped() {
+            defmt::info!("input, reading: {}", input.is_high().unwrap());
+        }
     }
 }
