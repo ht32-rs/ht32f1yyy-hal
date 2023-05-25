@@ -51,6 +51,13 @@ pub mod ckcu;
 pub mod gpio;
 pub mod time;
 
+#[cfg(not(any(
+    feature = "ht32f1251",
+    feature = "ht32f1252",
+    feature = "ht32f1253",
+)))]
+pub mod usb;
+
 mod sealed {
     pub trait Sealed {}
 }

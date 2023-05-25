@@ -332,6 +332,10 @@ impl Configuration {
         // Apply the calculated clock configuration
         let ckcu = unsafe { &*CKCU::ptr() };
 
+        // Enable backup domain, necessary for USB.
+        // TODO: only do this if ck_usb is Some?
+        ckcu.ckcu_lpcr.write(|w| w.bkiso().set_bit());
+
         // First configure the PLL in case it needs to be set up
         if pll_target_clock.is_some() {
             // Set the source clock for the PLL
