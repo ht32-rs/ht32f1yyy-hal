@@ -233,9 +233,9 @@ impl Configuration {
                         let current_divider = nf2 as f32 / *no2 as f32;
 
                         // The maximum output frequency for the PLL must be
-                        // between 8 and 72 Mhz
+                        // between 8 and 144 Mhz
                         let current_output = current_divider * hso.raw() as f32;
-                        if !(8_000_000.0..=72_000_000.0).contains(&current_output) {
+                        if !(8_000_000.0..=144_000_000.0).contains(&current_output) {
                             continue;
                         }
 
