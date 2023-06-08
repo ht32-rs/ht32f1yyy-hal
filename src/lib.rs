@@ -49,6 +49,7 @@ pub use crate::pac::interrupt;
 
 pub mod ckcu;
 pub mod gpio;
+pub mod i2c;
 pub mod time;
 
 #[cfg(not(any(
