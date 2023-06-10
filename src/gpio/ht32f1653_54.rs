@@ -62,4 +62,5 @@ gpio!(GPIOC, gpioc, PC, pcrst, pcen, gpioc_doutr, gpioc_dinr, gpioc_drvr, gpioc_
 gpio!(GPIOD, gpiod, PD, pdrst, pden, gpiod_doutr, gpiod_dinr, gpiod_drvr, gpiod_dircr, gpiod_pur, gpiod_pdr, gpiod_iner, gpiod_odr, [
     PD0: (pd0, 0, Input<Disabled>, AF0, dout0, din0, dir0, pu0, pd0, inen0, od0),
     PD1: (pd1, 1, Input<Disabled>, AF0, dout1, din1, dir1, pu1, pd1, inen1, od1),
+    PD2: (pd2, 2, Input<Disabled>, AF0, dout2, din2, dir2, pu2, pd2, inen2, od2),
 ]);

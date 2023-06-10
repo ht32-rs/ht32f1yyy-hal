@@ -203,6 +203,7 @@ afio!(gpiod: [
 afio!(gpiod: [
     PD0: (afio_gpdcfglr, pdcfg0),
     PD1: (afio_gpdcfglr, pdcfg1),
+    PD2: (afio_gpdcfglr, pdcfg2),
 ]);
 
 #[cfg(feature = "afio4")]

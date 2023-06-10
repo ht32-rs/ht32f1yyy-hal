@@ -310,73 +310,73 @@ macro_rules! gpio {
                 #[cfg(not(feature = "afio4"))]
                 impl<MODE, AF> $PXi<MODE, AF> {
                     /// Change the AF to AF4, leave the IO mode alone though
-                    pub fn alternate_af4(self, afio: &mut Afio) -> $PXi<MODE, AF4> {
+                    pub fn into_alternate_af4(self, afio: &mut Afio) -> $PXi<MODE, AF4> {
                         self.into_alternate(afio, 0b0100);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF5, leave the IO mode alone though
-                    pub fn alternate_af5(self, afio: &mut Afio) -> $PXi<MODE, AF5> {
+                    pub fn into_alternate_af5(self, afio: &mut Afio) -> $PXi<MODE, AF5> {
                         self.into_alternate(afio, 0b0101);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF6, leave the IO mode alone though
-                    pub fn alternate_af6(self, afio: &mut Afio) -> $PXi<MODE, AF6> {
+                    pub fn into_alternate_af6(self, afio: &mut Afio) -> $PXi<MODE, AF6> {
                         self.into_alternate(afio, 0b0110);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF7, leave the IO mode alone though
-                    pub fn alternate_af7(self, afio: &mut Afio) -> $PXi<MODE, AF7> {
+                    pub fn into_alternate_af7(self, afio: &mut Afio) -> $PXi<MODE, AF7> {
                         self.into_alternate(afio, 0b0111);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF8, leave the IO mode alone though
-                    pub fn alternate_af8(self, afio: &mut Afio) -> $PXi<MODE, AF8> {
+                    pub fn into_alternate_af8(self, afio: &mut Afio) -> $PXi<MODE, AF8> {
                         self.into_alternate(afio, 0b1000);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF9, leave the IO mode alone though
-                    pub fn alternate_af9(self, afio: &mut Afio) -> $PXi<MODE, AF9> {
+                    pub fn into_alternate_af9(self, afio: &mut Afio) -> $PXi<MODE, AF9> {
                         self.into_alternate(afio, 0b1001);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF10, leave the IO mode alone though
-                    pub fn alternate_af10(self, afio: &mut Afio) -> $PXi<MODE, AF10> {
+                    pub fn into_alternate_af10(self, afio: &mut Afio) -> $PXi<MODE, AF10> {
                         self.into_alternate(afio, 0b1010);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF11, leave the IO mode alone though
-                    pub fn alternate_af11(self, afio: &mut Afio) -> $PXi<MODE, AF11> {
+                    pub fn into_alternate_af11(self, afio: &mut Afio) -> $PXi<MODE, AF11> {
                         self.into_alternate(afio, 0b1011);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF12, leave the IO mode alone though
-                    pub fn alternate_af12(self, afio: &mut Afio) -> $PXi<MODE, AF12> {
+                    pub fn into_alternate_af12(self, afio: &mut Afio) -> $PXi<MODE, AF12> {
                         self.into_alternate(afio, 0b1100);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF13, leave the IO mode alone though
-                    pub fn alternate_af13(self, afio: &mut Afio) -> $PXi<MODE, AF13> {
+                    pub fn into_alternate_af13(self, afio: &mut Afio) -> $PXi<MODE, AF13> {
                         self.into_alternate(afio, 0b1101);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF14, leave the IO mode alone though
-                    pub fn alternate_af14(self, afio: &mut Afio) -> $PXi<MODE, AF14> {
+                    pub fn into_alternate_af14(self, afio: &mut Afio) -> $PXi<MODE, AF14> {
                         self.into_alternate(afio, 0b1110);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
 
                     /// Change the AF to AF15, leave the IO mode alone though
-                    pub fn alternate_af15(self, afio: &mut Afio) -> $PXi<MODE, AF15> {
+                    pub fn into_alternate_af15(self, afio: &mut Afio) -> $PXi<MODE, AF15> {
                         self.into_alternate(afio, 0b1111);
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
