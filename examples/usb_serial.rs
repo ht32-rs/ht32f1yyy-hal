@@ -1,4 +1,4 @@
-//! USB serial example
+//! USB serial example for the HT32F1755
 
 #![no_std]
 #![no_main]

@@ -1,4 +1,4 @@
-//! Clock configuration example
+//! GPIO example for the HT32F1755
 #![no_std]
 #![no_main]
 
@@ -36,8 +36,6 @@ fn main() -> ! {
     // To access PB6 as GPIO, we have to enable AF1 on the pin
     let mut output = gpiob.pb6.into_alternate_af1(&mut afio).into_output_push_pull();
     let input = gpioc.pc11.into_input_pull_down();
-    let _scl = gpioe.pe9.into_alternate_af3(&mut afio);
-    let _sda = gpioe.pe10.into_alternate_af3(&mut afio);
 
     output.set_high().unwrap();
 
