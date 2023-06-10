@@ -7,16 +7,16 @@ categories = ["embedded", "hardware-support", "no-std"]
 description = "Hardware Abstraction Layer implementation for HT32F1yyy series microcontrollers"
 keywords = ["arm", "cortex-m", "ht32", "hal", "embedded-hal"]
 license = "MIT"
-repository = "https://gitlab.com/jspngh/ht32f1yyy-hal"
+repository = "https://github.com/ht32-rs/ht32f1yyy-hal"
 readme = "README.md"
 exclude = [".gitignore"]
 
 [package.metadata.docs.rs]
 features = ["critical-section-impl", "rt", "ht32f175x"]
-targets = ["thumbv7em-none-eabihf"]
+targets = ["thumbv7m-none-eabi"]
 
 [dependencies]
-embedded-hal = "=1.0.0-alpha.10"
+embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
 cortex-m = "0.7"
 ht32f1yyy = { path = "../ht32-rs/ht32f1yyy" }
 ht32-usbd = { path = "../ht32-usbd" }
@@ -31,7 +31,7 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 usb-device = "0.2.9"
 usbd-serial = "0.1.1"
-embedded-hal-bus = "=0.1.0-alpha.2"
+embedded-hal-bus = { git = "https://github.com/rust-embedded/embedded-hal.git" }
 
 [features]
 # TODO: remove these default features
@@ -65,7 +65,3 @@ codegen-units = 1
 debug = true
 lto = true
 opt-level = "s"
-
-[patch.crates-io]
-embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
-embedded-hal-bus = { git = "https://github.com/rust-embedded/embedded-hal.git" }

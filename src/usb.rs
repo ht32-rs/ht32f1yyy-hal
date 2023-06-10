@@ -1,9 +1,10 @@
-//! USB peripheral driver for HT32 microcontrollers.
+//! USB peripheral implementation for HT32F1yyy microcontrollers.
 
 pub use ht32_usbd::UsbBus;
 use ht32_usbd::UsbPeripheral;
 
 use crate::ckcu::Pcer;
+#[cfg(not(feature = "dppu"))]
 use crate::hal::digital::OutputPin;
 use crate::pac::USB;
 
