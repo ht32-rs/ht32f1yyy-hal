@@ -20,7 +20,7 @@ embedded-hal = "=1.0.0-alpha.10"
 cortex-m = "0.7"
 ht32f1yyy = { path = "../ht32-rs/ht32f1yyy" }
 ht32-usbd = { path = "../ht32-usbd" }
-nb = "1.0.0"
+nb = "1.1.0"
 fugit = "0.3.6"
 
 [dev-dependencies]
@@ -31,6 +31,7 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 usb-device = "0.2.9"
 usbd-serial = "0.1.1"
+embedded-hal-bus = "=0.1.0-alpha.2"
 
 [features]
 # TODO: remove these default features
@@ -67,3 +68,4 @@ opt-level = "s"
 
 [patch.crates-io]
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
+embedded-hal-bus = { git = "https://github.com/rust-embedded/embedded-hal.git" }
