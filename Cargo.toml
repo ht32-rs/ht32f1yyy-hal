@@ -16,6 +16,7 @@ features = ["critical-section-impl", "rt", "ht32f175x"]
 targets = ["thumbv7m-none-eabi"]
 
 [dependencies]
+# Until 1.0.0 is released
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
 cortex-m = "0.7"
 ht32f1yyy = { path = "../ht32-rs/ht32f1yyy" }
@@ -31,11 +32,11 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 usb-device = "0.2.9"
 usbd-serial = "0.1.1"
+# Until 1.0.0 is released
 embedded-hal-bus = { git = "https://github.com/rust-embedded/embedded-hal.git" }
 
 [features]
-# TODO: remove these default features
-default = ["rt", "critical-section-impl", "ht32f1755"]
+default = ["rt", "critical-section-impl"]
 rt = ["ht32f1yyy/rt"]
 critical-section-impl = ["ht32f1yyy/critical-section", "cortex-m/critical-section-single-core"]
 
@@ -65,3 +66,24 @@ codegen-units = 1
 debug = true
 lto = true
 opt-level = "s"
+
+[[example]]
+name = "clocks"
+required-features = ["rt", "ht32f1755"]
+
+[[example]]
+name = "gpio"
+required-features = ["rt", "ht32f1755"]
+
+[[example]]
+name = "i2c"
+required-features = ["rt", "ht32f1755"]
+
+[[example]]
+# This example also requires a change in the default memory.x
+name = "spi"
+required-features = ["rt", "ht32f1654"]
+
+[[example]]
+name = "usb_serial"
+required-features = ["rt", "ht32f1755"]
