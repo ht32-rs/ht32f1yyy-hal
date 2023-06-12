@@ -3,6 +3,7 @@
 mod afio;
 pub use afio::Afio;
 
+use core::convert::Infallible;
 use core::marker::PhantomData;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
@@ -12,6 +13,14 @@ pub trait GpioExt {
 
     /// Splits the GPIO block into independent pins and registers
     fn split(self) -> Self::Parts;
+}
+
+// Implemented by each GPIO register block to enable erased pins
+trait GpioRegExt {
+    fn is_low(&self, pos: u8) -> bool;
+    fn is_set_low(&self, pos: u8) -> bool;
+    fn set_high(&self, pos: u8);
+    fn set_low(&self, pos: u8);
 }
 
 /// Output mode (type state)
@@ -99,9 +108,110 @@ impl GpioCurrent {
     }
 }
 
+/// Fully erased pin
+pub struct Pin<MODE> {
+    i: u8,
+    port: *const dyn GpioRegExt,
+    _mode: PhantomData<MODE>,
+}
+
+// NOTE(unsafe) The only write access is to SRR, which is thread safe
+unsafe impl<MODE> Sync for Pin<MODE> {}
+// NOTE(unsafe) this only enables read access to the same pin from multiple threads
+unsafe impl<MODE> Send for Pin<MODE> {}
+
+use crate::hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+
+impl<MODE> StatefulOutputPin for Pin<Output<MODE>> {
+    #[inline(always)]
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        self.is_set_low().map(|v| !v)
+    }
+
+    #[inline(always)]
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        Ok(unsafe { (*self.port).is_set_low(self.i) })
+    }
+}
+
+impl<MODE> OutputPin for Pin<Output<MODE>> {
+    #[inline(always)]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        unsafe { (*self.port).set_high(self.i) };
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        unsafe { (*self.port).set_low(self.i) }
+        Ok(())
+    }
+}
+
+impl<MODE> ToggleableOutputPin for Pin<Output<MODE>> {
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        todo!()
+    }
+}
+
+impl InputPin for Pin<Output<OpenDrain>> {
+    #[inline(always)]
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        self.is_low().map(|v| !v)
+    }
+
+    #[inline(always)]
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(unsafe { (*self.port).is_low(self.i) })
+    }
+}
+
+impl<MODE> InputPin for Pin<Input<MODE>> {
+    #[inline(always)]
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        self.is_low().map(|v| !v)
+    }
+
+    #[inline(always)]
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        Ok(unsafe { (*self.port).is_low(self.i) })
+    }
+}
+
+impl<MODE> ErrorType for Pin<MODE> {
+    type Error = Infallible;
+}
+
+// TODO: change the register names in the PAC, so we don't have to pass DINR, ODR, SRR, RR
+macro_rules! gpio_trait {
+    ($gpiox:ident : $gpiox_dinr:ident, $gpiox_doutr:ident, $gpiox_srr:ident, $gpiox_rr:ident) => {
+        impl GpioRegExt for crate::pac::$gpiox::RegisterBlock {
+            fn is_low(&self, pos: u8) -> bool {
+                // NOTE(unsafe) atomic read with no side effects
+                self.$gpiox_dinr.read().bits() & (1 << pos) == 0
+            }
+
+            fn is_set_low(&self, pos: u8) -> bool {
+                // NOTE(unsafe) atomic read with no side effects
+                self.$gpiox_doutr.read().bits() & (1 << pos) == 0
+            }
+
+            fn set_high(&self, pos: u8) {
+                // NOTE(unsafe) atomic write to a stateless register
+                unsafe { self.$gpiox_srr.write(|w| w.bits(1 << pos)) };
+            }
+
+            fn set_low(&self, pos: u8) {
+                // NOTE(unsafe) atomic write to a stateless register
+                unsafe { self.$gpiox_rr.write(|w| w.bits(1 << pos)) };
+            }
+        }
+    };
+}
+
 macro_rules! gpio {
-    ($GPIOX:ident, $gpiox:ident, $PXx:ident, $pxrst:ident, $pxen:ident, $gpiox_doutr:ident, $gpiox_dinr:ident, $gpiox_drvr:ident, $gpiox_dircr:ident, $gpiox_pur:ident, $gpiox_pdr:ident, $gpiox_iner: ident, $gpiox_odr:ident, [
-         $($PXi:ident: ($pxi:ident, $i:expr, $MODE:ty, $AF:ty, $doutx: ident, $dinx: ident, $dirx:ident, $pux: ident, $pdx:ident, $inenx:ident, $odx:ident),)+
+    ($GPIOX:ident, $gpiox:ident, $pxrst:ident, $pxen:ident, $gpiox_drvr:ident, $gpiox_dircr:ident, $gpiox_pur:ident, $gpiox_pdr:ident, $gpiox_iner: ident, $gpiox_odr:ident, [
+         $($PXi:ident: ($pxi:ident, $i:expr, $MODE:ty, $AF:ty, $dirx:ident, $pux: ident, $pdx:ident, $inenx:ident, $odx:ident),)+
     ]) => {
         pub mod $gpiox {
             use core::convert::Infallible;
@@ -111,7 +221,8 @@ macro_rules! gpio {
             use crate::pac::$GPIOX;
             use crate::ckcu::Pcer;
 
-            use crate::gpio::{Output, Input, OpenDrain, PushPull, PullDown, PullUp, Floating, GpioExt, Disabled};
+            use crate::gpio::{Output, Input, OpenDrain, PushPull, PullDown, PullUp, Floating, Disabled};
+            use crate::gpio::{GpioExt, GpioRegExt, Pin};
             use crate::gpio::afio::{Afio, AfioCfg};
 
             use crate::gpio::{AF0, AF1, AF2, AF3};
@@ -140,71 +251,6 @@ macro_rules! gpio {
                         )+
                     }
                 }
-            }
-
-            /// A general struct that can describe all the pins in this GPIO block,
-            /// in case one would have to iterate over them, store them in an array
-            /// etc.
-            pub struct $PXx<MODE> {
-                i: u8,
-                _mode: PhantomData<MODE>
-            }
-
-            impl<MODE> $PXx<MODE> {
-                pub fn get_id(&self) -> u8 {
-                    self.i
-                }
-            }
-
-            // All PXx in any `Output` mode can do this
-            impl<OUTPUT> OutputPin for $PXx<Output<OUTPUT>> {
-                fn set_high(&mut self) -> Result<(), Self::Error> {
-                    // Set the i-th bit of the corresponding GPIO data out register to 1
-                    unsafe { (*$GPIOX::ptr()).$gpiox_doutr.modify(|_,w| w.bits(1 << self.i)) };
-                    Ok(())
-                }
-
-                fn set_low(&mut self) -> Result<(), Self::Error> {
-                    // Set the i-th bit of the corresponding GPIO data out register to 0
-                    unsafe { (*$GPIOX::ptr()).$gpiox_doutr.modify(|_,w| w.bits(0 << self.i)) };
-                    Ok(())
-                }
-            }
-
-            // All PXx in any `Output` mode can do this
-            impl<MODE> StatefulOutputPin for $PXx<Output<MODE>> {
-                fn is_set_high(&self) -> Result<bool, Self::Error> {
-                    self.is_set_low().map(|v| !v)
-                }
-
-                fn is_set_low(&self) -> Result<bool, Self::Error> {
-                    // Check whether the i-th bit of the corresponding GPIO data out register is 0
-                    Ok(unsafe { (*$GPIOX::ptr()).$gpiox_doutr.read().bits() & (1 << self.i) == 0 })
-                }
-            }
-
-            // All PXx in any `Output` mode can do this
-            impl<MODE> ToggleableOutputPin for $PXx<Output<MODE>> {
-                fn toggle(&mut self) -> Result<(), Self::Error> {
-                    // TODO
-                    Ok(())
-                }
-            }
-
-            // All PXx in any `Input` mode can do this
-            impl<MODE> InputPin for $PXx<Input<MODE>> {
-                fn is_high(&self) -> Result<bool, Self::Error> {
-                    self.is_low().map(|v| !v)
-                }
-
-                fn is_low(&self) -> Result<bool, Self::Error> {
-                    // Check whether the i-th bit of the corresponding GPIO data in register is 0
-                    Ok(unsafe { (*$GPIOX::ptr()).$gpiox_dinr.read().bits() & (1 << self.i) == 0 })
-                }
-            }
-
-            impl<MODE> ErrorType for $PXx<MODE> {
-                type Error = Infallible;
             }
 
             // This is where all pins of this GPIO block as well as the GPIO state
@@ -387,9 +433,10 @@ macro_rules! gpio {
                     ///
                     /// This is useful when you want to collect the pins into an array where you
                     /// need all the elements to have the same type
-                    pub fn downgrade(self) -> $PXx<MODE> {
-                        $PXx {
+                    pub fn downgrade(self) -> Pin<MODE> {
+                        Pin {
                             i: $i,
+                            port: $GPIOX::ptr() as *const dyn GpioRegExt,
                             _mode: self._mode,
                         }
                     }
@@ -397,13 +444,11 @@ macro_rules! gpio {
 
                 impl<OUTPUT, AF> OutputPin for $PXi<Output<OUTPUT>, AF> {
                     fn set_high(&mut self) -> Result<(), Self::Error> {
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_doutr.modify(|_,w| w.$doutx().set_bit());
-                        Ok(())
+                        Ok(unsafe { (*$GPIOX::ptr()).set_high($i) })
                     }
 
                     fn set_low(&mut self) -> Result<(), Self::Error> {
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_doutr.modify(|_,w| w.$doutx().clear_bit());
-                        Ok(())
+                        Ok(unsafe { (*$GPIOX::ptr()).set_low($i) })
                     }
                 }
 
@@ -413,14 +458,13 @@ macro_rules! gpio {
                     }
 
                     fn is_set_low(&self) -> Result<bool, Self::Error> {
-                        Ok((unsafe { &*$GPIOX::ptr() }).$gpiox_doutr.read().$doutx().bit_is_clear())
+                        Ok(unsafe { (*$GPIOX::ptr()).is_set_low($i) })
                     }
                 }
 
                 impl<OUTPUT, AF> ToggleableOutputPin for $PXi<Output<OUTPUT>, AF> {
                     fn toggle(&mut self) -> Result<(), Self::Error> {
-                        // TODO
-                        Ok(())
+                        todo!()
                     }
                 }
 
@@ -431,7 +475,7 @@ macro_rules! gpio {
                     }
 
                     fn is_low(&self) -> Result<bool, Self::Error> {
-                        Ok((unsafe { &*$GPIOX::ptr() }).$gpiox_dinr.read().$dinx().bit_is_clear())
+                        Ok(unsafe { (*$GPIOX::ptr()).is_low($i) })
                     }
                 }
 
