@@ -1,9 +1,9 @@
 use super::GpioRegExt;
 
-gpio_trait!(gpioa: gpioa_dinr, gpioa_doutr, gpioa_srr, gpioa_rr);
-gpio_trait!(gpiob: gpiob_dinr, gpiob_doutr, gpiob_srr, gpiob_rr);
+gpio_trait!(gpioa);
+gpio_trait!(gpiob);
 
-gpio!(GPIOA, gpioa, parst, paen, gpioa_drvr, gpioa_dircr, gpioa_pur, gpioa_pdr, gpioa_iner, gpioa_odr, [
+gpio!(GPIOA, gpioa, parst, paen, drvr, dircr, pur, pdr, iner, odr, [
     PA0: (pa0, 0, Input<Disabled>, AF0, dir0, pu0, pd0, inen0, od0),
     PA1: (pa1, 1, Input<Disabled>, AF0, dir1, pu1, pd1, inen1, od1),
     PA2: (pa2, 2, Input<Disabled>, AF0, dir2, pu2, pd2, inen2, od2),
@@ -26,7 +26,7 @@ gpio!(GPIOA, gpioa, parst, paen, gpioa_drvr, gpioa_dircr, gpioa_pur, gpioa_pdr, 
     PA15: (pa15, 15, Input<Disabled>, AF0, dir15, pu15, pd15, inen15, od15),
 ]);
 
-gpio!(GPIOB, gpiob, pbrst, pben, gpiob_drvr, gpiob_dircr, gpiob_pur, gpiob_pdr, gpiob_iner, gpiob_odr, [
+gpio!(GPIOB, gpiob, pbrst, pben, drvr, dircr, pur, pdr, iner, odr, [
     PB0: (pb0, 0, Input<Disabled>, AF0, dir0, pu0, pd0, inen0, od0),
     PB1: (pb1, 1, Input<Disabled>, AF0, dir1, pu1, pd1, inen1, od1),
     PB2: (pb2, 2, Input<Disabled>, AF0, dir2, pu2, pd2, inen2, od2),

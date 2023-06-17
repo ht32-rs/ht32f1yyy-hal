@@ -184,33 +184,33 @@ impl<MODE> ErrorType for Pin<MODE> {
 
 // TODO: change the register names in the PAC, so we don't have to pass DINR, ODR, SRR, RR
 macro_rules! gpio_trait {
-    ($gpiox:ident : $gpiox_dinr:ident, $gpiox_doutr:ident, $gpiox_srr:ident, $gpiox_rr:ident) => {
+    ($gpiox:ident) => {
         impl GpioRegExt for crate::pac::$gpiox::RegisterBlock {
             fn is_low(&self, pos: u8) -> bool {
                 // NOTE(unsafe) atomic read with no side effects
-                self.$gpiox_dinr.read().bits() & (1 << pos) == 0
+                self.dinr.read().bits() & (1 << pos) == 0
             }
 
             fn is_set_low(&self, pos: u8) -> bool {
                 // NOTE(unsafe) atomic read with no side effects
-                self.$gpiox_doutr.read().bits() & (1 << pos) == 0
+                self.doutr.read().bits() & (1 << pos) == 0
             }
 
             fn set_high(&self, pos: u8) {
                 // NOTE(unsafe) atomic write to a stateless register
-                unsafe { self.$gpiox_srr.write(|w| w.bits(1 << pos)) };
+                unsafe { self.srr.write(|w| w.bits(1 << pos)) };
             }
 
             fn set_low(&self, pos: u8) {
                 // NOTE(unsafe) atomic write to a stateless register
-                unsafe { self.$gpiox_rr.write(|w| w.bits(1 << pos)) };
+                unsafe { self.rr.write(|w| w.bits(1 << pos)) };
             }
         }
     };
 }
 
 macro_rules! gpio {
-    ($GPIOX:ident, $gpiox:ident, $pxrst:ident, $pxen:ident, $gpiox_drvr:ident, $gpiox_dircr:ident, $gpiox_pur:ident, $gpiox_pdr:ident, $gpiox_iner: ident, $gpiox_odr:ident, [
+    ($GPIOX:ident, $gpiox:ident, $pxrst:ident, $pxen:ident, $drvr:ident, $dircr:ident, $pur:ident, $pdr:ident, $iner: ident, $odr:ident, [
          $($PXi:ident: ($pxi:ident, $i:expr, $MODE:ty, $AF:ty, $dirx:ident, $pux: ident, $pdx:ident, $inenx:ident, $odx:ident),)+
     ]) => {
         pub mod $gpiox {
@@ -267,9 +267,9 @@ macro_rules! gpio {
                     /// Change the pin to an output pin in push pull mode
                     pub fn into_output_push_pull(self) -> $PXi<Output<PushPull>, AF> {
                         // Set the direction to output
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_dircr.modify(|_, w| w.$dirx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$dircr.modify(|_, w| w.$dirx().set_bit());
                         // Disable open drain -> implcitly enable push pull
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_odr.modify(|_, w| w.$odx().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$odr.modify(|_, w| w.$odx().clear_bit());
 
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
@@ -277,9 +277,9 @@ macro_rules! gpio {
                     /// Change the pin into an output pin in open drain mode
                     pub fn into_output_open_drain(self) -> $PXi<Output<OpenDrain>, AF> {
                         // Set the direction to output
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_dircr.modify(|_, w| w.$dirx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$dircr.modify(|_, w| w.$dirx().set_bit());
                         // Enable open drain
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_odr.modify(|_, w| w.$odx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$odr.modify(|_, w| w.$odx().set_bit());
 
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
@@ -287,12 +287,12 @@ macro_rules! gpio {
                     /// Change the pin into an input pin in pull up mode
                     pub fn into_input_pull_up(self) -> $PXi<Input<PullUp>, AF> {
                         // Set the direction to input
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_dircr.modify(|_, w| w.$dirx().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$dircr.modify(|_, w| w.$dirx().clear_bit());
                         // Enable pull up
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_pur.modify(|_, w| w.$pux().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$pur.modify(|_, w| w.$pux().set_bit());
                         // Enable the input function, this is what allows us to actually
                         // read values from the Schmitt trigger inside the GPIO circuit
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_iner.modify(|_, w| w.$inenx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$iner.modify(|_, w| w.$inenx().set_bit());
 
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
@@ -300,15 +300,15 @@ macro_rules! gpio {
                     /// Change the pin into an input pin in pull down mode.
                     pub fn into_input_pull_down(self) -> $PXi<Input<PullDown>, AF> {
                         // Set the direction to input
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_dircr.modify(|_, w| w.$dirx().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$dircr.modify(|_, w| w.$dirx().clear_bit());
                         // According to User Manual page 133 pull up takes priority over pull down,
                         // hence we have to disable it here explicitly
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_pur.modify(|_, w| w.$pux().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$pur.modify(|_, w| w.$pux().clear_bit());
                         // Enable pull down
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_pdr.modify(|_, w| w.$pdx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$pdr.modify(|_, w| w.$pdx().set_bit());
                         // Enable the input function, this is what allows us to actually
                         // read values from the Schmitt trigger inside the GPIO circuit
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_iner.modify(|_, w| w.$inenx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$iner.modify(|_, w| w.$inenx().set_bit());
 
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
@@ -316,14 +316,14 @@ macro_rules! gpio {
                     /// Change the pin into an input pin in floating mode
                     pub fn into_input_floating(self) -> $PXi<Input<Floating>, AF> {
                         // Set the direction to input
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_dircr.modify(|_, w| w.$dirx().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$dircr.modify(|_, w| w.$dirx().clear_bit());
                         // Disable pull up
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_pur.modify(|_, w| w.$pux().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$pur.modify(|_, w| w.$pux().clear_bit());
                         // Disable pull down
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_pdr.modify(|_, w| w.$pdx().clear_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$pdr.modify(|_, w| w.$pdx().clear_bit());
                         // Enable the input function, this is what allows us to actually
                         // read values from the Schmitt trigger inside the GPIO circuit
-                        (unsafe { &*$GPIOX::ptr() }).$gpiox_iner.modify(|_, w| w.$inenx().set_bit());
+                        (unsafe { &*$GPIOX::ptr() }).$iner.modify(|_, w| w.$inenx().set_bit());
 
                         $PXi { _mode: PhantomData, _af: PhantomData }
                     }
@@ -487,9 +487,9 @@ macro_rules! gpio {
     }
 }
 
-#[cfg(any(feature = "ht32f1251", feature = "ht32f1252", feature = "ht32f1252"))]
+#[cfg(any(feature = "ht32f1251", feature = "ht32f1252", feature = "ht32f1253"))]
 mod ht32f125x;
-#[cfg(any(feature = "ht32f1251", feature = "ht32f1252", feature = "ht32f1252"))]
+#[cfg(any(feature = "ht32f1251", feature = "ht32f1252", feature = "ht32f1253"))]
 pub use ht32f125x::*;
 
 #[cfg(any(feature = "ht32f1653", feature = "ht32f1654"))]
