@@ -19,8 +19,8 @@ targets = ["thumbv7m-none-eabi"]
 # Until 1.0.0 is released
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
 cortex-m = "0.7"
-ht32f1yyy = { path = "../ht32-rs/ht32f1yyy" }
-ht32-usbd = { path = "../ht32-usbd" }
+ht32f1yyy = "0.2.0"
+ht32-usbd = "0.1.0"
 nb = "1.1.0"
 fugit = "0.3.6"
 
