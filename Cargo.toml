@@ -16,8 +16,7 @@ features = ["critical-section-impl", "rt", "ht32f175x"]
 targets = ["thumbv7m-none-eabi"]
 
 [dependencies]
-# Until 1.0.0 is released
-embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal.git" }
+embedded-hal = "=1.0.0-alpha.11"
 cortex-m = "0.7"
 ht32f1yyy = "0.2.0"
 ht32-usbd = "0.1.0"
@@ -32,8 +31,7 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 usb-device = "0.2.9"
 usbd-serial = "0.1.1"
-# Until 1.0.0 is released
-embedded-hal-bus = { git = "https://github.com/rust-embedded/embedded-hal.git" }
+embedded-hal-bus = "=0.1.0-alpha.3"
 
 [features]
 default = ["rt", "critical-section-impl"]
