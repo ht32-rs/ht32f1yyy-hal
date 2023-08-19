@@ -502,7 +502,7 @@ mod ht32f1655_56;
 #[cfg(any(feature = "ht32f1655", feature = "ht32f1656"))]
 pub use ht32f1655_56::*;
 
-#[cfg(any(feature = "ht32f1755", feature = "ht32f765"))]
+#[cfg(any(feature = "ht32f1755", feature = "ht32f1765"))]
 mod ht32f175x;
-#[cfg(any(feature = "ht32f1755", feature = "ht32f765"))]
+#[cfg(any(feature = "ht32f1755", feature = "ht32f1765"))]
 pub use ht32f175x::*;
