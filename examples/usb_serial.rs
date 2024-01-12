@@ -22,7 +22,8 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
     let ckcu = dp.CKCU.constrain(dp.RSTCU);
 
-    let _clocks = ckcu.configuration
+    let _clocks = ckcu
+        .configuration
         .use_hse(8.MHz())
         .ck_sys(144u32.MHz())
         .hclk(72u32.MHz())
@@ -32,19 +33,18 @@ fn main() -> ! {
     let gpioa = dp.GPIOA.split();
     let dppu = gpioa.pa4.into_output_push_pull();
 
-    let usb = Peripheral {
-        usb: dp.USB,
-        dppu,
-    };
+    let usb = Peripheral { usb: dp.USB, dppu };
     let usb_bus = UsbBus::new(usb);
 
     let mut serial = SerialPort::new(&usb_bus);
 
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
-        .manufacturer("BigCo Inc.")
-        .product("Serial port")
-        .serial_number("DEADBEEF")
         .device_class(USB_CLASS_CDC)
+        .strings(&[StringDescriptors::new(LangID::EN)
+            .manufacturer("BigCo Inc.")
+            .product("Serial port")
+            .serial_number("DEADBEEF")])
+        .expect("Cannot set string descriptors")
         .build();
 
     loop {

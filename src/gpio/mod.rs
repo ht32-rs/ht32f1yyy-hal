@@ -120,16 +120,16 @@ unsafe impl<MODE> Sync for Pin<MODE> {}
 // NOTE(unsafe) this only enables read access to the same pin from multiple threads
 unsafe impl<MODE> Send for Pin<MODE> {}
 
-use crate::hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+use crate::hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
 
 impl<MODE> StatefulOutputPin for Pin<Output<MODE>> {
     #[inline(always)]
-    fn is_set_high(&self) -> Result<bool, Self::Error> {
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         self.is_set_low().map(|v| !v)
     }
 
     #[inline(always)]
-    fn is_set_low(&self) -> Result<bool, Self::Error> {
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
         Ok(unsafe { (*self.port).is_set_low(self.i) })
     }
 }
@@ -148,32 +148,26 @@ impl<MODE> OutputPin for Pin<Output<MODE>> {
     }
 }
 
-impl<MODE> ToggleableOutputPin for Pin<Output<MODE>> {
-    fn toggle(&mut self) -> Result<(), Self::Error> {
-        todo!()
-    }
-}
-
 impl InputPin for Pin<Output<OpenDrain>> {
     #[inline(always)]
-    fn is_high(&self) -> Result<bool, Self::Error> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         self.is_low().map(|v| !v)
     }
 
     #[inline(always)]
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(unsafe { (*self.port).is_low(self.i) })
     }
 }
 
 impl<MODE> InputPin for Pin<Input<MODE>> {
     #[inline(always)]
-    fn is_high(&self) -> Result<bool, Self::Error> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         self.is_low().map(|v| !v)
     }
 
     #[inline(always)]
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(unsafe { (*self.port).is_low(self.i) })
     }
 }
@@ -217,7 +211,7 @@ macro_rules! gpio {
             use core::convert::Infallible;
             use core::marker::PhantomData;
 
-            use crate::hal::digital::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin, ErrorType};
+            use crate::hal::digital::{InputPin, OutputPin, StatefulOutputPin, ErrorType};
             use crate::pac::$GPIOX;
             use crate::ckcu::Pcer;
 
@@ -453,28 +447,22 @@ macro_rules! gpio {
                 }
 
                 impl<OUTPUT, AF> StatefulOutputPin for $PXi<Output<OUTPUT>, AF> {
-                    fn is_set_high(&self) -> Result<bool, Self::Error> {
+                    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
                         self.is_set_low().map(|v| !v)
                     }
 
-                    fn is_set_low(&self) -> Result<bool, Self::Error> {
+                    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
                         Ok(unsafe { (*$GPIOX::ptr()).is_set_low($i) })
-                    }
-                }
-
-                impl<OUTPUT, AF> ToggleableOutputPin for $PXi<Output<OUTPUT>, AF> {
-                    fn toggle(&mut self) -> Result<(), Self::Error> {
-                        todo!()
                     }
                 }
 
                 impl<INPUT, AF> InputPin for $PXi<Input<INPUT>, AF> {
 
-                    fn is_high(&self) -> Result<bool, Self::Error> {
+                    fn is_high(&mut self) -> Result<bool, Self::Error> {
                         self.is_low().map(|v| !v)
                     }
 
-                    fn is_low(&self) -> Result<bool, Self::Error> {
+                    fn is_low(&mut self) -> Result<bool, Self::Error> {
                         Ok(unsafe { (*$GPIOX::ptr()).is_low($i) })
                     }
                 }
