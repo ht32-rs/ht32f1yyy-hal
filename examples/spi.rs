@@ -48,7 +48,7 @@ fn main() -> ! {
     let cs = gpiob.pb10.into_output_push_pull();
 
     let spi: hal::spi::Spi<_, u8> = dp.SPI1.spi(sck, miso, mosi, MODE_0, 1.MHz(), &clocks);
-    let mut device = ExclusiveDevice::new(spi, cs);
+    let mut device = ExclusiveDevice::new_no_delay(spi, cs);
 
     defmt::info!("Interact with SPI flash");
 

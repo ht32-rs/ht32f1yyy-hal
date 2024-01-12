@@ -156,6 +156,7 @@ spi! {
 impl<SPI, WORD> Spi<SPI, WORD>
 where
     SPI: Deref<Target = crate::pac::spi0::RegisterBlock>,
+    WORD: core::marker::Copy,
 {
     pub fn free(self) -> SPI {
         self.spi
@@ -192,7 +193,9 @@ where
             Error::WriteCollision.into()
         } else if sr.rxbne().bit_is_set() {
             return Ok(unsafe {
-                core::ptr::read_volatile(&self.spi.spi_dr as *const _ as *const WORD)
+                (*(&self.spi.spi_dr as *const crate::pac::spi0::SPI_DR)
+                    .cast::<vcell::VolatileCell<WORD>>())
+                .get()
             });
         } else {
             nb::Error::WouldBlock
@@ -208,7 +211,11 @@ where
         } else if sr.wc().bit_is_set() {
             Error::WriteCollision.into()
         } else if sr.txe().bit_is_set() {
-            unsafe { core::ptr::write_volatile(&self.spi.spi_dr as *const _ as *mut WORD, byte) }
+            unsafe {
+                (*(&self.spi.spi_dr as *const crate::pac::spi0::SPI_DR)
+                    .cast::<vcell::VolatileCell<WORD>>())
+                .set(byte)
+            }
             return Ok(());
         } else {
             nb::Error::WouldBlock

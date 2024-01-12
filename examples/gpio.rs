@@ -31,11 +31,10 @@ fn main() -> ! {
 
     let gpiob = dp.GPIOB.split();
     let gpioc = dp.GPIOC.split();
-    let gpioe = dp.GPIOE.split();
 
     // To access PB6 as GPIO, we have to enable AF1 on the pin
     let mut output = gpiob.pb6.into_alternate_af1(&mut afio).into_output_push_pull();
-    let input = gpioc.pc11.into_input_pull_down();
+    let mut input = gpioc.pc11.into_input_pull_down();
 
     output.set_high().unwrap();
 
